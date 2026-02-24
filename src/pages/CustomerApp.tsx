@@ -408,9 +408,9 @@ const Footer = () => (
   </footer>
 );
 
-const MenuSection = ({ items, onAdd }: { items: MenuItem[], onAdd: (item: MenuItem) => void }) => {
-  const categories = Array.from(new Set(items.map(i => i.category)));
-  const [activeCategory, setActiveCategory] = useState(categories[0] || 'All');
+const MenuSection = ({ items, onAdd, loading }: { items: MenuItem[], onAdd: (item: MenuItem) => void, loading: boolean }) => {
+  const categories = ['All', ...Array.from(new Set(items.map(i => i.category)))];
+  const [activeCategory, setActiveCategory] = useState('All');
 
   const filteredItems = activeCategory === 'All' ? items : items.filter(i => i.category === activeCategory);
 
@@ -422,62 +422,86 @@ const MenuSection = ({ items, onAdd }: { items: MenuItem[], onAdd: (item: MenuIt
           <div className="w-24 h-1 bg-amber-400 mx-auto" />
         </div>
 
-        <div className="flex overflow-x-auto pb-4 gap-8 mb-12 no-scrollbar justify-center border-b border-stone-800">
-          {categories.map(cat => (
-            <button
-              key={cat}
-              onClick={() => setActiveCategory(cat)}
-              className={cn(
-                "pb-4 text-xs font-bold tracking-widest uppercase transition-all relative",
-                activeCategory === cat 
-                  ? "text-amber-400" 
-                  : "text-stone-500 hover:text-stone-300"
-              )}
-            >
-              {cat}
-              {activeCategory === cat && (
-                <motion.div layoutId="activeTab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-amber-400" />
-              )}
-            </button>
-          ))}
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
-          {filteredItems.map(item => (
-            <motion.div 
-              key={item.id}
-              initial={{ opacity: 0, y: 10 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              className="group flex gap-4 items-start pb-6 border-b border-stone-900"
-            >
-              <div className="flex-1">
-                <div className="flex justify-between items-baseline mb-2">
-                  <h3 className="font-serif text-xl font-bold text-white group-hover:text-amber-400 transition-colors">{item.name}</h3>
-                  <span className="font-bold text-amber-400">{formatCurrency(item.price)}</span>
-                </div>
-                <p className="text-stone-400 text-sm leading-relaxed mb-3">{item.description}</p>
-                
-                <div className="flex items-center gap-3">
-                  {item.is_veg ? (
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-stone-500 border border-stone-800 px-2 py-0.5 rounded-sm">Vegan Option</span>
-                  ) : null}
-                  
-                  {item.is_available ? (
-                    <button 
-                      onClick={() => onAdd(item)}
-                      className="text-[10px] font-bold uppercase tracking-wider text-amber-400 hover:text-white transition-colors flex items-center gap-1"
-                    >
-                      <Plus className="w-3 h-3" /> Add to Order
-                    </button>
-                  ) : (
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-red-500">Sold Out</span>
+        {loading ? (
+          <div className="flex justify-center items-center h-64">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-amber-400"></div>
+          </div>
+        ) : (
+          <>
+            <div className="flex overflow-x-auto pb-4 gap-8 mb-12 no-scrollbar justify-center border-b border-stone-800">
+              {categories.map(cat => (
+                <button
+                  key={cat}
+                  onClick={() => setActiveCategory(cat)}
+                  className={cn(
+                    "pb-4 text-xs font-bold tracking-widest uppercase transition-all relative whitespace-nowrap",
+                    activeCategory === cat 
+                      ? "text-amber-400" 
+                      : "text-stone-500 hover:text-stone-300"
                   )}
-                </div>
-              </div>
-            </motion.div>
-          ))}
-        </div>
+                >
+                  {cat}
+                  {activeCategory === cat && (
+                    <motion.div layoutId="activeTab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-amber-400" />
+                  )}
+                </button>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
+              {filteredItems.map(item => (
+                <motion.div 
+                  key={item.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: "-50px" }}
+                  className="group flex gap-4 items-start pb-6 border-b border-stone-900"
+                >
+                  <div className="flex-1">
+                    <div className="flex justify-between items-baseline mb-2">
+                      <h3 className="font-serif text-xl font-bold text-white group-hover:text-amber-400 transition-colors">{item.name}</h3>
+                      <span className="font-bold text-amber-400">{formatCurrency(item.price)}</span>
+                    </div>
+                    <p className="text-stone-400 text-sm leading-relaxed mb-3">{item.description}</p>
+                    
+                    <div className="flex items-center gap-3">
+                      {item.is_veg ? (
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-stone-500 border border-stone-800 px-2 py-0.5 rounded-sm">Vegan Option</span>
+                      ) : null}
+                      
+                      {item.is_available ? (
+                        <button 
+                          onClick={() => onAdd(item)}
+                          className="text-[10px] font-bold uppercase tracking-wider text-amber-400 hover:text-white transition-colors flex items-center gap-1"
+                        >
+                          <Plus className="w-3 h-3" /> Add to Order
+                        </button>
+                      ) : (
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-red-500">Sold Out</span>
+                      )}
+                    </div>
+                  </div>
+                  {item.image_url && (
+                    <div className="w-24 h-24 rounded-lg overflow-hidden flex-shrink-0 bg-stone-900">
+                      <img 
+                        src={item.image_url} 
+                        alt={item.name} 
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                        loading="lazy"
+                      />
+                    </div>
+                  )}
+                </motion.div>
+              ))}
+            </div>
+            
+            {filteredItems.length === 0 && (
+               <div className="text-center py-12 text-stone-500">
+                 No items found in this category.
+               </div>
+            )}
+          </>
+        )}
         
         <div className="mt-16 text-center">
           <button 
@@ -766,6 +790,7 @@ const CheckoutModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => vo
 
 export default function CustomerApp() {
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [isTrackerOpen, setIsTrackerOpen] = useState(false);
@@ -773,9 +798,23 @@ export default function CustomerApp() {
 
   useEffect(() => {
     fetch('/api/menu')
-      .then(res => res.json())
-      .then(data => setMenuItems(data))
-      .catch(err => console.error('Failed to load menu', err));
+      .then(res => {
+        if (!res.ok) throw new Error('Failed to fetch menu');
+        return res.json();
+      })
+      .then(data => {
+        if (Array.isArray(data)) {
+          setMenuItems(data);
+        } else {
+          console.error('Menu data is not an array:', data);
+          toast.error('Failed to load menu data');
+        }
+      })
+      .catch(err => {
+        console.error('Failed to load menu', err);
+        toast.error('Could not load menu. Please refresh.');
+      })
+      .finally(() => setLoading(false));
   }, []);
 
   const handleAddToCart = (item: MenuItem) => {
@@ -803,7 +842,7 @@ export default function CustomerApp() {
         onOpenTracker={() => setIsTrackerOpen(true)}
       />
       <Hero />
-      <MenuSection items={menuItems} onAdd={handleAddToCart} />
+      <MenuSection items={menuItems} onAdd={handleAddToCart} loading={loading} />
       <AboutSection />
       <ContactSection />
       <Footer />
