@@ -409,10 +409,13 @@ const Footer = () => (
 );
 
 const MenuSection = ({ items, onAdd, loading }: { items: MenuItem[], onAdd: (item: MenuItem) => void, loading: boolean }) => {
-  const categories = ['All', ...Array.from(new Set(items.map(i => i.category)))];
+  const categories = React.useMemo(() => ['All', ...Array.from(new Set(items.map(i => i.category)))], [items]);
   const [activeCategory, setActiveCategory] = useState('All');
 
-  const filteredItems = activeCategory === 'All' ? items : items.filter(i => i.category === activeCategory);
+  const filteredItems = React.useMemo(() => 
+    activeCategory === 'All' ? items : items.filter(i => i.category === activeCategory),
+    [activeCategory, items]
+  );
 
   return (
     <section id="menu" className="py-24 px-4 bg-stone-950 relative">

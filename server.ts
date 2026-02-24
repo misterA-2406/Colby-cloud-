@@ -22,10 +22,22 @@ async function startServer() {
 
   // --- API Routes ---
 
+  // Cache for menu items
+  let menuCache: any[] | null = null;
+  let lastCacheTime = 0;
+  const CACHE_DURATION = 60 * 1000; // 1 minute
+
   // 1. Get Menu
   app.get('/api/menu', (req, res) => {
     try {
+      const now = Date.now();
+      if (menuCache && (now - lastCacheTime < CACHE_DURATION)) {
+        return res.json(menuCache);
+      }
+
       const menu = db.prepare('SELECT * FROM menu_items WHERE is_available = 1').all();
+      menuCache = menu;
+      lastCacheTime = now;
       res.json(menu);
     } catch (error) {
       res.status(500).json({ error: 'Failed to fetch menu' });
@@ -224,6 +236,7 @@ async function startServer() {
       });
 
       if (result.changes > 0) {
+        menuCache = null; // Invalidate cache
         res.json({ success: true });
       } else {
         res.status(404).json({ error: 'Item not found' });
@@ -252,6 +265,7 @@ async function startServer() {
         is_available: is_available ? 1 : 0
       });
 
+      menuCache = null; // Invalidate cache
       res.status(201).json({ success: true, id: result.lastInsertRowid });
     } catch (error) {
       console.error(error);
