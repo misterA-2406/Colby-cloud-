@@ -323,7 +323,15 @@ const ContactSection = () => (
           <div>
             <p className="text-xs font-bold text-stone-500 uppercase tracking-widest mb-4">Contact</p>
             <p className="text-white text-lg mb-2">0161 555 0199</p>
-            <p className="text-stone-400">hello@colbysstretford.co.uk</p>
+            <p className="text-stone-400 mb-2">hello@colbysstretford.co.uk</p>
+            <a 
+              href="https://wa.me/918074047927" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 text-emerald-400 hover:text-emerald-300 transition-colors"
+            >
+              <span className="font-bold">WhatsApp:</span> +91 80740 47927
+            </a>
           </div>
         </div>
       </div>
