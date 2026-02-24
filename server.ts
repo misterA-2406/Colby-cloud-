@@ -44,6 +44,21 @@ async function startServer() {
     payment_method: z.enum(['cod', 'online'])
   });
 
+  app.get('/api/orders/:id', (req, res) => {
+    try {
+      const { id } = req.params;
+      const order = db.prepare('SELECT id, status, total_amount, created_at FROM orders WHERE id = ?').get(id);
+      
+      if (!order) {
+        return res.status(404).json({ error: 'Order not found' });
+      }
+      
+      res.json(order);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to fetch order status' });
+    }
+  });
+
   app.post('/api/orders', (req, res) => {
     try {
       const validation = orderSchema.safeParse(req.body);

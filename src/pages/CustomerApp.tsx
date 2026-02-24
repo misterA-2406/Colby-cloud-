@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShoppingBag, Phone, MapPin, Plus, Minus, X } from 'lucide-react';
+import { ShoppingBag, Phone, MapPin, Plus, Minus, X, Search, Truck, Check, Clock, Package } from 'lucide-react';
 import { useCartStore } from '@/store/cart';
 import { formatCurrency, cn } from '@/lib/utils';
 import { MenuItem } from '@/types';
@@ -8,7 +8,138 @@ import toast from 'react-hot-toast';
 
 // --- Components ---
 
-const Header = ({ cartCount, onOpenCart }: { cartCount: number, onOpenCart: () => void }) => (
+const OrderTrackerModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) => {
+  const [orderId, setOrderId] = useState('');
+  const [status, setStatus] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const checkStatus = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!orderId.trim()) return;
+    
+    setLoading(true);
+    setError('');
+    setStatus(null);
+
+    try {
+      const res = await fetch(`/api/orders/${orderId.trim()}`);
+      const data = await res.json();
+      
+      if (res.ok) {
+        setStatus(data);
+      } else {
+        setError(data.error || 'Order not found');
+      }
+    } catch (err) {
+      setError('Failed to check status');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  const getStatusStep = (currentStatus: string) => {
+    const steps = ['pending', 'confirmed', 'preparing', 'out_for_delivery', 'delivered'];
+    const currentIndex = steps.indexOf(currentStatus);
+    return currentIndex;
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+      <motion.div 
+        initial={{ scale: 0.95, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        className="bg-stone-900 border border-stone-800 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl"
+      >
+        <div className="p-4 border-b border-stone-800 flex justify-between items-center">
+          <h3 className="font-serif font-bold text-lg text-white">Track Your Order</h3>
+          <button onClick={onClose}><X className="w-5 h-5 text-stone-400 hover:text-white" /></button>
+        </div>
+        
+        <div className="p-6">
+          <form onSubmit={checkStatus} className="flex gap-2 mb-8">
+            <input 
+              type="text" 
+              placeholder="Enter Order ID (e.g. a1b2c3d4)"
+              className="flex-1 bg-stone-950 border border-stone-800 text-white px-4 py-2 rounded-lg focus:outline-none focus:border-amber-400 transition-colors"
+              value={orderId}
+              onChange={e => setOrderId(e.target.value)}
+            />
+            <button 
+              type="submit"
+              disabled={loading}
+              className="bg-amber-400 text-stone-950 px-4 py-2 rounded-lg font-bold hover:bg-amber-300 transition-colors disabled:opacity-50"
+            >
+              {loading ? '...' : <Search className="w-5 h-5" />}
+            </button>
+          </form>
+
+          {error && (
+            <div className="text-red-400 text-center p-4 bg-red-900/20 rounded-lg border border-red-900/50 mb-4">
+              {error}
+            </div>
+          )}
+
+          {status && (
+            <div className="space-y-6">
+              <div className="text-center">
+                <p className="text-stone-400 text-sm mb-1">Status for Order #{status.id.slice(0,8)}</p>
+                <p className="text-2xl font-serif font-bold text-white capitalize">
+                  {status.status.replace(/_/g, ' ')}
+                </p>
+              </div>
+
+              <div className="relative flex justify-between items-center px-2">
+                {/* Progress Bar Background */}
+                <div className="absolute left-0 right-0 top-1/2 h-0.5 bg-stone-800 -z-10" />
+                
+                {/* Active Progress */}
+                <div 
+                  className="absolute left-0 top-1/2 h-0.5 bg-amber-400 -z-10 transition-all duration-500" 
+                  style={{ width: `${(getStatusStep(status.status) / 4) * 100}%` }}
+                />
+
+                {['pending', 'preparing', 'out_for_delivery', 'delivered'].map((step, idx) => {
+                  const currentStepIdx = getStatusStep(status.status);
+                  const isCompleted = currentStepIdx >= idx;
+                  const isCurrent = currentStepIdx === idx;
+
+                  let Icon = Package;
+                  if (step === 'preparing') Icon = Clock;
+                  if (step === 'out_for_delivery') Icon = Truck;
+                  if (step === 'delivered') Icon = Check;
+
+                  return (
+                    <div key={step} className="flex flex-col items-center gap-2 bg-stone-900 px-2">
+                      <div className={cn(
+                        "w-8 h-8 rounded-full flex items-center justify-center border-2 transition-colors",
+                        isCompleted ? "bg-amber-400 border-amber-400 text-stone-950" : "bg-stone-950 border-stone-700 text-stone-700",
+                        isCurrent && "ring-4 ring-amber-400/20"
+                      )}>
+                        <Icon className="w-4 h-4" />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              
+              <div className="flex justify-between text-[10px] uppercase tracking-widest text-stone-500 font-bold px-1">
+                <span>Received</span>
+                <span>Kitchen</span>
+                <span>On Way</span>
+                <span>Delivered</span>
+              </div>
+            </div>
+          )}
+        </div>
+      </motion.div>
+    </div>
+  );
+};
+
+const Header = ({ cartCount, onOpenCart, onOpenTracker }: { cartCount: number, onOpenCart: () => void, onOpenTracker: () => void }) => (
   <header className="fixed top-0 left-0 right-0 z-50 bg-stone-950/80 backdrop-blur-md border-b border-white/5">
     <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
       <div className="flex items-center gap-2">
@@ -19,10 +150,14 @@ const Header = ({ cartCount, onOpenCart }: { cartCount: number, onOpenCart: () =
         <a href="#menu" className="hover:text-amber-400 transition-colors">Menu</a>
         <a href="#about" className="hover:text-amber-400 transition-colors">Story</a>
         <a href="#visit" className="hover:text-amber-400 transition-colors">Delivery</a>
+        <button onClick={onOpenTracker} className="hover:text-amber-400 transition-colors">Track Order</button>
       </nav>
 
       <div className="flex items-center gap-6">
-        <a href="tel:+919876543210" className="hidden md:block text-stone-300 hover:text-amber-400 transition-colors">
+        <button onClick={onOpenTracker} className="md:hidden text-stone-300 hover:text-amber-400">
+          <Search className="w-5 h-5" />
+        </button>
+        <a href="tel:+918074047927" className="hidden md:block text-stone-300 hover:text-amber-400 transition-colors">
           <Phone className="w-5 h-5" />
         </a>
         <button 
@@ -479,6 +614,23 @@ const CheckoutModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => vo
       // Success
       toast.success('Order placed successfully!');
       
+      // Show Order ID to user
+      toast((t) => (
+        <div className="flex flex-col gap-2">
+          <span className="font-bold">Order #{data.orderId.slice(0, 8)}</span>
+          <span className="text-sm">Save this ID to track your order!</span>
+          <button 
+            onClick={() => {
+              navigator.clipboard.writeText(data.orderId);
+              toast.success('Copied to clipboard');
+            }}
+            className="text-xs bg-stone-200 px-2 py-1 rounded hover:bg-stone-300"
+          >
+            Copy ID
+          </button>
+        </div>
+      ), { duration: 6000 });
+      
       // WhatsApp Redirection
       const message = `*New Order: ${data.orderId.slice(0, 8)}*\n\n` +
         items.map(i => `${i.quantity}x ${i.name} - ${formatCurrency(i.price * i.quantity)}`).join('\n') +
@@ -487,7 +639,7 @@ const CheckoutModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => vo
         `Name: ${formData.name}\n` +
         `Address: ${formData.address}`;
       
-      const whatsappUrl = `https://wa.me/919876543210?text=${encodeURIComponent(message)}`;
+      const whatsappUrl = `https://wa.me/918074047927?text=${encodeURIComponent(message)}`;
       window.open(whatsappUrl, '_blank');
 
       clearCart();
@@ -503,23 +655,25 @@ const CheckoutModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => vo
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
       <motion.div 
         initial={{ scale: 0.95, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        className="bg-white rounded-2xl w-full max-w-md overflow-hidden shadow-2xl"
+        className="bg-white rounded-sm w-full max-w-md overflow-hidden shadow-2xl"
       >
         <div className="p-4 border-b border-stone-100 flex justify-between items-center bg-stone-50">
-          <h3 className="font-serif font-bold text-lg">Checkout Details</h3>
+          <h3 className="font-serif font-bold text-lg text-stone-900">Checkout Details</h3>
           <button onClick={onClose}><X className="w-5 h-5 text-stone-500" /></button>
         </div>
+        {/* ... form content ... */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {/* ... existing form fields ... */}
           <div>
             <label className="block text-sm font-medium text-stone-700 mb-1">Full Name</label>
             <input 
               required
               type="text"
-              className="w-full px-4 py-2 rounded-lg border border-stone-200 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+              className="w-full px-4 py-2 rounded-sm border border-stone-200 focus:ring-2 focus:ring-amber-400 focus:border-amber-400 outline-none transition-all"
               value={formData.name}
               onChange={e => setFormData({...formData, name: e.target.value})}
               placeholder="John Doe"
@@ -531,10 +685,10 @@ const CheckoutModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => vo
               required
               type="tel"
               pattern="[0-9]{10}"
-              className="w-full px-4 py-2 rounded-lg border border-stone-200 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+              className="w-full px-4 py-2 rounded-sm border border-stone-200 focus:ring-2 focus:ring-amber-400 focus:border-amber-400 outline-none transition-all"
               value={formData.phone}
               onChange={e => setFormData({...formData, phone: e.target.value})}
-              placeholder="9876543210"
+              placeholder="8074047927"
             />
           </div>
           <div>
@@ -542,7 +696,7 @@ const CheckoutModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => vo
             <textarea 
               required
               rows={3}
-              className="w-full px-4 py-2 rounded-lg border border-stone-200 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all resize-none"
+              className="w-full px-4 py-2 rounded-sm border border-stone-200 focus:ring-2 focus:ring-amber-400 focus:border-amber-400 outline-none transition-all resize-none"
               value={formData.address}
               onChange={e => setFormData({...formData, address: e.target.value})}
               placeholder="Flat No, Street, Landmark..."
@@ -556,9 +710,9 @@ const CheckoutModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => vo
                 type="button"
                 onClick={() => setFormData({...formData, paymentMethod: 'cod'})}
                 className={cn(
-                  "py-2 px-3 rounded-lg border text-sm font-medium transition-all",
+                  "py-2 px-3 rounded-sm border text-sm font-medium transition-all",
                   formData.paymentMethod === 'cod' 
-                    ? "border-emerald-500 bg-emerald-50 text-emerald-700" 
+                    ? "border-amber-400 bg-amber-50 text-amber-900" 
                     : "border-stone-200 text-stone-600 hover:bg-stone-50"
                 )}
               >
@@ -568,9 +722,9 @@ const CheckoutModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => vo
                 type="button"
                 onClick={() => setFormData({...formData, paymentMethod: 'online'})}
                 className={cn(
-                  "py-2 px-3 rounded-lg border text-sm font-medium transition-all",
+                  "py-2 px-3 rounded-sm border text-sm font-medium transition-all",
                   formData.paymentMethod === 'online' 
-                    ? "border-emerald-500 bg-emerald-50 text-emerald-700" 
+                    ? "border-amber-400 bg-amber-50 text-amber-900" 
                     : "border-stone-200 text-stone-600 hover:bg-stone-50"
                 )}
               >
@@ -587,12 +741,12 @@ const CheckoutModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => vo
           <button 
             type="submit" 
             disabled={loading}
-            className="w-full bg-stone-900 text-white py-3 rounded-xl font-medium hover:bg-stone-800 transition-colors shadow-lg mt-4 disabled:opacity-70 disabled:cursor-not-allowed"
+            className="w-full bg-stone-900 text-white py-3 rounded-sm font-bold uppercase tracking-wider hover:bg-stone-800 transition-colors shadow-lg mt-4 disabled:opacity-70 disabled:cursor-not-allowed"
           >
             {loading ? 'Processing...' : `Place Order • ${formatCurrency(totalPrice())}`}
           </button>
           <p className="text-xs text-stone-400 text-center mt-2">
-            If WhatsApp doesn't open, please message us at +91 98765 43210
+            If WhatsApp doesn't open, please message us at +91 80740 47927
           </p>
         </form>
       </motion.div>
@@ -606,6 +760,7 @@ export default function CustomerApp() {
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+  const [isTrackerOpen, setIsTrackerOpen] = useState(false);
   const { addItem, totalItems } = useCartStore();
 
   useEffect(() => {
@@ -619,21 +774,26 @@ export default function CustomerApp() {
     addItem(item);
     toast.success(`Added ${item.name} to cart`, {
       style: {
-        background: '#333',
-        color: '#fff',
-        borderRadius: '50px',
-        fontSize: '14px'
+        background: '#1c1917',
+        color: '#fbbf24',
+        borderRadius: '4px',
+        fontSize: '12px',
+        fontWeight: 'bold'
       },
       iconTheme: {
-        primary: '#10B981',
-        secondary: '#fff',
+        primary: '#fbbf24',
+        secondary: '#1c1917',
       },
     });
   };
 
   return (
     <div className="min-h-screen bg-stone-950 font-sans text-stone-100">
-      <Header cartCount={totalItems()} onOpenCart={() => setIsCartOpen(true)} />
+      <Header 
+        cartCount={totalItems()} 
+        onOpenCart={() => setIsCartOpen(true)} 
+        onOpenTracker={() => setIsTrackerOpen(true)}
+      />
       <Hero />
       <MenuSection items={menuItems} onAdd={handleAddToCart} />
       <AboutSection />
@@ -652,6 +812,11 @@ export default function CustomerApp() {
       <CheckoutModal 
         isOpen={isCheckoutOpen} 
         onClose={() => setIsCheckoutOpen(false)} 
+      />
+
+      <OrderTrackerModal 
+        isOpen={isTrackerOpen} 
+        onClose={() => setIsTrackerOpen(false)} 
       />
     </div>
   );
