@@ -6,6 +6,8 @@ import { RefreshCw, LogOut, Package, Check, Clock, Truck, X, Plus, Edit2, Trash2
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 
+import { api } from '@/services/api';
+
 export default function AdminDashboard() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
@@ -27,33 +29,40 @@ export default function AdminDashboard() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const token = localStorage.getItem('admin_token');
+    const token = localStorage.getItem('lb_admin_token'); // Updated key
     if (!token) navigate('/admin');
     
-    fetchData();
-    const interval = setInterval(fetchData, 5000); // Poll every 5s
-    return () => clearInterval(interval);
+    // Initial Fetch
+    fetchMenu();
+
+    // Subscribe to Orders (Real-time)
+    const unsubscribe = api.subscribeToOrders((newOrders) => {
+      setOrders(newOrders);
+    });
+
+    return () => unsubscribe();
   }, []);
 
-  const fetchData = () => {
-    fetch('/api/admin/orders')
-      .then(res => res.json())
-      .then(data => setOrders(data))
-      .catch(console.error);
-      
-    fetch('/api/admin/menu')
-      .then(res => res.json())
-      .then(data => setMenuItems(data))
-      .catch(console.error);
+  const fetchMenu = async () => {
+    try {
+      const menuData = await api.getMenu();
+      setMenuItems(menuData);
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const fetchData = async () => {
+    // Legacy fetch, kept for manual refresh button
+    fetchMenu();
+    // Orders are handled by subscription, but we can force refresh if needed
+    const ordersData = await api.getOrders();
+    setOrders(ordersData);
   };
 
   const updateStatus = async (orderId: string, status: string) => {
     try {
-      await fetch(`/api/admin/orders/${orderId}/status`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status })
-      });
+      await api.updateOrderStatus(orderId, status);
       toast.success('Status updated');
       fetchData();
     } catch (error) {
@@ -98,25 +107,15 @@ export default function AdminDashboard() {
     };
 
     try {
-      const url = editingItem 
-        ? `/api/admin/menu/${editingItem.id}` 
-        : '/api/admin/menu';
-      
-      const method = editingItem ? 'PUT' : 'POST';
-
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-
-      if (res.ok) {
-        toast.success(editingItem ? 'Item updated' : 'Item created');
-        setIsModalOpen(false);
-        fetchData();
+      if (editingItem) {
+        await api.updateMenuItem({ ...payload, id: editingItem.id } as MenuItem);
+        toast.success('Item updated');
       } else {
-        throw new Error('Failed to save');
+        await api.addMenuItem(payload as any);
+        toast.success('Item created');
       }
+      setIsModalOpen(false);
+      fetchData();
     } catch (error) {
       toast.error('Operation failed');
     }
@@ -137,14 +136,19 @@ export default function AdminDashboard() {
   return (
     <div className="min-h-screen bg-stone-50">
       <nav className="bg-white border-b border-stone-200 px-6 py-4 flex justify-between items-center sticky top-0 z-10 shadow-sm">
-        <h1 className="font-serif font-bold text-xl text-stone-900">LuxeBites Admin</h1>
+        <div className="flex items-center gap-3">
+          <h1 className="font-serif font-bold text-xl text-stone-900">LuxeBites Admin</h1>
+          <span className="bg-amber-100 text-amber-800 text-xs font-bold px-2 py-1 rounded-full border border-amber-200 uppercase tracking-wider">
+            Demo Mode
+          </span>
+        </div>
         <div className="flex items-center gap-4">
           <button onClick={fetchData} className="p-2 hover:bg-stone-100 rounded-full text-stone-600 transition-colors">
             <RefreshCw className="w-5 h-5" />
           </button>
           <button 
             onClick={() => {
-              localStorage.removeItem('admin_token');
+              localStorage.removeItem('lb_admin_token');
               navigate('/admin');
             }}
             className="flex items-center gap-2 text-sm font-medium text-red-600 hover:bg-red-50 px-3 py-2 rounded-lg transition-colors"

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { motion } from 'framer-motion';
 import { Lock, User, ArrowRight } from 'lucide-react';
+import { api } from '@/services/api';
 
 export default function AdminLogin() {
   const [username, setUsername] = useState('');
@@ -14,16 +15,9 @@ export default function AdminLogin() {
     e.preventDefault();
     setIsLoading(true);
     try {
-      const res = await fetch('/api/admin/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password })
-      });
-      
-      const data = await res.json();
+      const data = await api.login(username, password);
       
       if (data.success) {
-        localStorage.setItem('admin_token', data.token);
         toast.success('Welcome back, Admin');
         navigate('/admin/dashboard');
       } else {

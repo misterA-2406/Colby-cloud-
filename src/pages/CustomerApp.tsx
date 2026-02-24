@@ -144,6 +144,9 @@ const Header = ({ cartCount, onOpenCart, onOpenTracker }: { cartCount: number, o
     <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
       <div className="flex items-center gap-2">
         <span className="font-serif font-bold text-2xl tracking-widest text-amber-400">COLBY'S</span>
+        <span className="hidden md:inline-block bg-white/10 text-white/70 text-[10px] font-bold px-2 py-0.5 rounded-full border border-white/10 uppercase tracking-wider ml-2">
+          Demo
+        </span>
       </div>
       
       <nav className="hidden md:flex items-center gap-8 text-xs font-bold tracking-widest text-stone-300 uppercase">
@@ -630,21 +633,16 @@ const CheckoutModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => vo
     setLoading(true);
 
     try {
-      const response = await fetch('/api/orders', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          customer_name: formData.name,
-          customer_phone: formData.phone,
-          customer_address: formData.address,
-          items: items.map(i => ({ id: i.id, quantity: i.quantity })),
-          payment_method: formData.paymentMethod
-        })
+      // Use local API service
+      const data = await api.createOrder({
+        customer_name: formData.name,
+        customer_phone: formData.phone,
+        customer_address: formData.address,
+        items: items.map(i => ({ id: i.id, quantity: i.quantity })),
+        payment_method: formData.paymentMethod
       });
 
-      const data = await response.json();
-
-      if (!response.ok) throw new Error(data.error || 'Order failed');
+      if (!data.success) throw new Error('Order failed');
 
       // Success
       toast.success('Order placed successfully!');
@@ -681,7 +679,7 @@ const CheckoutModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => vo
       onClose();
 
     } catch (error: any) {
-      toast.error(error.message);
+      toast.error(error.message || 'Failed to place order');
     } finally {
       setLoading(false);
     }
@@ -791,7 +789,7 @@ const CheckoutModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => vo
 
 // --- Main Page ---
 
-import { INITIAL_MENU_ITEMS } from '@/data/menu';
+import { api } from '@/services/api';
 
 export default function CustomerApp() {
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
@@ -804,20 +802,11 @@ export default function CustomerApp() {
   useEffect(() => {
     const fetchMenu = async () => {
       try {
-        const res = await fetch('/api/menu');
-        if (!res.ok) throw new Error('Failed to fetch menu');
-        const data = await res.json();
-        if (Array.isArray(data)) {
-          setMenuItems(data);
-        } else {
-          throw new Error('Invalid data format');
-        }
+        const data = await api.getMenu();
+        setMenuItems(data);
       } catch (err) {
-        console.warn('Failed to load menu from API, using fallback data:', err);
-        // Fallback to static data for Vercel/Static deployments
+        console.warn('Failed to load menu, using fallback:', err);
         setMenuItems(INITIAL_MENU_ITEMS);
-        // Optional: Toast to inform user they are viewing static data
-        // toast.error('Using offline menu data'); 
       } finally {
         setLoading(false);
       }
