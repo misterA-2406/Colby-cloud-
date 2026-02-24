@@ -144,9 +144,11 @@ const Header = ({ cartCount, onOpenCart, onOpenTracker }: { cartCount: number, o
     <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
       <div className="flex items-center gap-2">
         <span className="font-serif font-bold text-2xl tracking-widest text-amber-400">COLBY'S</span>
-        <span className="hidden md:inline-block bg-white/10 text-white/70 text-[10px] font-bold px-2 py-0.5 rounded-full border border-white/10 uppercase tracking-wider ml-2">
-          Demo
-        </span>
+        {!isFirebaseEnabled && (
+          <span className="hidden md:inline-block bg-white/10 text-white/70 text-[10px] font-bold px-2 py-0.5 rounded-full border border-white/10 uppercase tracking-wider ml-2">
+            Demo
+          </span>
+        )}
       </div>
       
       <nav className="hidden md:flex items-center gap-8 text-xs font-bold tracking-widest text-stone-300 uppercase">
@@ -790,6 +792,8 @@ const CheckoutModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => vo
 // --- Main Page ---
 
 import { api } from '@/services/api';
+import { isFirebaseEnabled } from '@/lib/firebase';
+import { INITIAL_MENU_ITEMS } from '@/data/menu';
 
 export default function CustomerApp() {
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);

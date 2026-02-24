@@ -1,12 +1,12 @@
 export interface MenuItem {
-  id: number;
+  id: number | string; // Allow string IDs for Firebase
   name: string;
   description: string;
   price: number;
   category: string;
   image_url: string;
-  is_veg: number; // 0 or 1
-  is_available: number; // 0 or 1
+  is_veg: boolean;
+  is_available: boolean;
 }
 
 export interface CartItem extends MenuItem {

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Order, MenuItem } from '@/types';
 import { formatCurrency, cn } from '@/lib/utils';
-import { RefreshCw, LogOut, Package, Check, Clock, Truck, X, Plus, Edit2, Trash2, Image as ImageIcon } from 'lucide-react';
+import { RefreshCw, LogOut, Package, Check, Clock, Truck, X, Plus, Edit2, Trash2, Image as ImageIcon, Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -118,6 +118,27 @@ export default function AdminDashboard() {
       fetchData();
     } catch (error) {
       toast.error('Operation failed');
+    }
+  };
+
+  const handleDelete = async (id: string | number) => {
+    if (!window.confirm('Are you sure you want to delete this item?')) return;
+    try {
+      await api.deleteMenuItem(id);
+      toast.success('Item deleted');
+      fetchMenu();
+    } catch (error) {
+      toast.error('Failed to delete item');
+    }
+  };
+
+  const handleToggleAvailability = async (item: MenuItem) => {
+    try {
+      await api.updateMenuItem({ ...item, is_available: !item.is_available ? 1 : 0 });
+      toast.success(item.is_available ? 'Marked as Sold Out' : 'Marked as Available');
+      fetchMenu();
+    } catch (error) {
+      toast.error('Failed to update status');
     }
   };
 
@@ -272,17 +293,32 @@ export default function AdminDashboard() {
               <div key={item.id} className={cn("bg-white rounded-xl overflow-hidden shadow-sm border transition-all hover:shadow-md group", item.is_available ? "border-stone-200" : "border-red-200 opacity-75")}>
                 <div className="relative h-48 overflow-hidden">
                   <img src={item.image_url} alt={item.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
-                  <div className="absolute top-3 right-3 flex gap-2">
+                  <div className="absolute top-3 right-3 flex gap-2 z-10">
                     <button 
-                      onClick={() => handleOpenModal(item)}
+                      onClick={(e) => { e.stopPropagation(); handleToggleAvailability(item); }}
+                      className={cn("p-2 rounded-full shadow-sm transition-colors backdrop-blur", item.is_available ? "bg-white/90 text-stone-700 hover:bg-white" : "bg-emerald-600 text-white hover:bg-emerald-700")}
+                      title={item.is_available ? "Mark as Sold Out" : "Mark as Available"}
+                    >
+                      {item.is_available ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); handleOpenModal(item); }}
                       className="p-2 bg-white/90 backdrop-blur rounded-full shadow-sm hover:bg-white transition-colors text-stone-700"
+                      title="Edit Item"
                     >
                       <Edit2 className="w-4 h-4" />
                     </button>
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }}
+                      className="p-2 bg-white/90 backdrop-blur rounded-full shadow-sm hover:bg-red-50 transition-colors text-red-600"
+                      title="Delete Item"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
                   {!item.is_available && (
-                    <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] flex items-center justify-center">
-                      <span className="bg-red-100 text-red-800 px-3 py-1 rounded-full text-xs font-bold uppercase border border-red-200">Sold Out</span>
+                    <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] flex items-center justify-center pointer-events-none">
+                      <span className="bg-red-100 text-red-800 px-3 py-1 rounded-full text-xs font-bold uppercase border border-red-200 shadow-sm">Sold Out</span>
                     </div>
                   )}
                 </div>

@@ -1,7 +1,7 @@
 import { MenuItem, Order } from '@/types';
 import { INITIAL_MENU_ITEMS } from '@/data/menu';
 import { db, isFirebaseEnabled } from '@/lib/firebase';
-import { collection, getDocs, addDoc, updateDoc, doc, onSnapshot, query, orderBy, getDoc, setDoc } from 'firebase/firestore';
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy, getDoc, setDoc } from 'firebase/firestore';
 
 // Types
 interface AdminUser {
@@ -91,6 +91,18 @@ class ApiService {
     const updatedMenu = menu.map(i => i.id === item.id ? item : i);
     this.setStorage(STORAGE_KEYS.MENU, updatedMenu);
     return item;
+  }
+
+  async deleteMenuItem(id: string | number): Promise<void> {
+    if (isFirebaseEnabled && db) {
+      await deleteDoc(doc(db, 'menu_items', String(id)));
+      return;
+    }
+
+    await delay(500);
+    const menu = await this.getMenu();
+    const updatedMenu = menu.filter(i => i.id !== id);
+    this.setStorage(STORAGE_KEYS.MENU, updatedMenu);
   }
 
   // --- Order API ---
