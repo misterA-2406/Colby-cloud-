@@ -791,6 +791,8 @@ const CheckoutModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => vo
 
 // --- Main Page ---
 
+import { INITIAL_MENU_ITEMS } from '@/data/menu';
+
 export default function CustomerApp() {
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -800,24 +802,28 @@ export default function CustomerApp() {
   const { addItem, totalItems } = useCartStore();
 
   useEffect(() => {
-    fetch('/api/menu')
-      .then(res => {
+    const fetchMenu = async () => {
+      try {
+        const res = await fetch('/api/menu');
         if (!res.ok) throw new Error('Failed to fetch menu');
-        return res.json();
-      })
-      .then(data => {
+        const data = await res.json();
         if (Array.isArray(data)) {
           setMenuItems(data);
         } else {
-          console.error('Menu data is not an array:', data);
-          toast.error('Failed to load menu data');
+          throw new Error('Invalid data format');
         }
-      })
-      .catch(err => {
-        console.error('Failed to load menu', err);
-        toast.error('Could not load menu. Please refresh.');
-      })
-      .finally(() => setLoading(false));
+      } catch (err) {
+        console.warn('Failed to load menu from API, using fallback data:', err);
+        // Fallback to static data for Vercel/Static deployments
+        setMenuItems(INITIAL_MENU_ITEMS);
+        // Optional: Toast to inform user they are viewing static data
+        // toast.error('Using offline menu data'); 
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchMenu();
   }, []);
 
   const handleAddToCart = (item: MenuItem) => {
